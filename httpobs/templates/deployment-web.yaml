@@ -1,0 +1,62 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ template "httpobs.fullname" . }}-webserver
+  labels:
+    app: {{ template "httpobs.name" . }}-webserver
+    chart: {{ template "httpobs.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "httpobs.name" . }}-webserver
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "httpobs.name" . }}-webserver
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: httpobs-webserver
+          image: "{{ .Values.observatoryimage.repository }}:{{ .Values.observatoryimage.tag }}"
+          imagePullPolicy: {{ .Values.observatoryimage.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.observatory.web_container_port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.observatory.web_container_port }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.observatory.web_container_port }}
+          env:
+          - name: HTTPOBS_BROKER_URL
+            value: redis://{{ .Release.Name }}-redis-master:6379
+          - name: HTTPOBS_DATABASE_HOST
+            value: {{ .Release.Name }}-postgresql
+          - name: HTTPOBS_DATABASE_PASS
+            value: {{ .Values.postgresql.postgresPassword }}
+          - name: HTTPOBS_DATABASE_USER
+            value: {{ .Values.postgresql.postgresUser }}
+          command: ["/usr/local/bin/uwsgi"]
+          args: [ "--http", ":{{ .Values.observatory.web_container_port }}", "--wsgi-file", "/app/httpobs/website/main.py", "--processes", "{{ .Values.observatory.web_container_workers }}", "--callable", "app", "--master" ]
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}

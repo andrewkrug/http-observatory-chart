@@ -1,0 +1,51 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ template "httpobs.fullname" . }}-scanner
+  labels:
+    app: {{ template "httpobs.name" . }}-scanner
+    chart: {{ template "httpobs.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "httpobs.name" . }}-scanner
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "httpobs.name" . }}-scanner
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: httpobs-scanner
+          image: "{{ .Values.observatoryimage.repository }}:{{ .Values.observatoryimage.tag }}"
+          imagePullPolicy: {{ .Values.observatoryimage.pullPolicy }}
+          command: ["/app/httpobs/scripts/httpobs-scan-worker"]
+          env:
+          - name: HTTPOBS_BROKER_URL
+            value: redis://{{ .Release.Name }}-redis-master:6379
+          - name: HTTPOBS_DATABASE_HOST
+            value: {{ .Release.Name }}-postgresql
+          - name: HTTPOBS_DATABASE_PASS
+            value: {{ .Values.postgresql.postgresPassword }}
+          - name: HTTPOBS_DATABASE_USER
+            value: {{ .Values.postgresql.postgresUser }}
+          - name: HTTPOBS_MAX_CONCURRENCY
+            value: "{{ .Values.observatory.scanner_maximum_concurrency }}"
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}

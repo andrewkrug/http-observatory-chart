@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ template "httpobs.fullname" . }}-db-job
+  labels:
+  name: {{ template "httpobs.fullname" . }}-db-job
+  labels:
+    app: {{ template "httpobs.fullname" . }}-db-job
+    chart: {{ template "httpobs.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+  annotations:
+    "helm.sh/hook": post-install
+spec:
+  template:
+    metadata:
+      name: {{ template "httpobs.fullname" . }}-db-job
+      labels:
+        release: {{ .Release.Name }}
+        app: {{ template "httpobs.name" . }}-db-job
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: post-install-job-migration-1
+          image: "andrewkrug/httpobs-db:latest"
+          env:
+            - name: PGHOST
+              value: {{ .Release.Name }}-postgresql
+            - name: PGUSER
+              value: {{ .Values.postgresql.postgresUser }}
+            - name: PGPASSWORD
+              value: {{ .Values.postgresql.postgresPassword }}
+            - name: PGDATABASE
+              value: {{ .Values.postgresql.postgresDatabase }}
+          command: ["/usr/bin/psql"]
+          args: ["-f", "/docker-entrypoint-initdb.d/schema.sql"]
+        - name: post-install-job-migration-2
+          image: "andrewkrug/httpobs-db"
+          env:
+            - name: PGHOST
+              value: {{ .Release.Name }}-postgresql
+            - name: PGUSER
+              value: {{ .Values.postgresql.postgresUser }}
+            - name: PGPASSWORD
+              value: {{ .Values.postgresql.postgresPassword }}
+            - name: PGDATABASE
+              value: {{ .Values.postgresql.postgresDatabase }}
+          command: ["/usr/bin/psql"]
+          args: ["-f", "/docker-entrypoint-initdb.d/schema.sql.docker.sql"]

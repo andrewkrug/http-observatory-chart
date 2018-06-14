@@ -1,0 +1,5 @@
+apiVersion: v1
+appVersion: "1.0"
+description: "A Helm chart for the Mozilla Web Observatory.  Created at Mozilla All Hands June 2018."
+name: httpobs
+version: 0.1.0
